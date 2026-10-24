@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>國家考試申論試卷模擬編輯器</title>
+<style id="pgstyle"></style>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#222}
+#app{display:grid;grid-template-columns:38% 62%;height:100vh}
+#left{background:#fafafa;border-right:1px solid #ddd;padding:12px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+#right{background:#6b7280;display:flex;flex-direction:column;min-width:0}
+textarea{flex:1;min-height:240px;width:100%;resize:vertical;font:16px/1.6 "Noto Sans TC","Microsoft JhengHei",sans-serif;padding:10px;border:1px solid #ccc;border-radius:6px}
+button{font:inherit;padding:6px 12px;border:1px solid #bbb;background:#fff;border-radius:6px;cursor:pointer}
+button:hover:not(:disabled){background:#eef2ff}
+button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row label{font-size:14px;display:flex;align-items:center;gap:4px}
+input[type=number]{width:64px;padding:4px}
+#stats{font-size:13px;background:#fff;border:1px solid #e3e3e3;border-radius:6px;padding:8px;line-height:1.7}
+details{font-size:13px;background:#fff;border:1px solid #e3e3e3;border-radius:6px;padding:6px 8px}
+details input{width:70px}
+#bar{background:#374151;color:#fff;padding:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+#bar button{padding:5px 10px}
+#stage{flex:1;overflow:auto;padding:16px;min-height:0}
+#wrap{margin:0 auto;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.4);background:#fff}
+.paper{background:#fff;position:relative;transform-origin:0 0;--ln:#8a8a8a;color:#111}
+.paper.nogrid{--ln:transparent}
+.hd{position:absolute;left:0;right:0;font-size:3.6mm;display:flex;justify-content:space-between;align-items:flex-end}
+.hd b{font-size:5.4mm;letter-spacing:.6mm}
+.grid{display:grid;border:.5mm solid #111;width:100%}
+.sc{grid-column:1;grid-row:1/span 22;border-right:.3mm solid #111;display:flex;flex-direction:column;align-items:center;padding-top:3mm;font-size:4mm;gap:1mm}
+.q,.c{display:flex;align-items:center;justify-content:center;border-right:.2mm solid var(--ln);border-bottom:.2mm solid var(--ln);overflow:hidden;line-height:1}
+.q{font-size:4.2mm;border-right:.3mm solid #111}
+.c{font-size:var(--fs)}
+.lab{font-size:calc(var(--fs)*.56);letter-spacing:-.04em;white-space:nowrap}
+.ft{position:absolute;left:0;right:0;text-align:center;font-size:3.2mm;color:#555}
+#pa{display:none}
+@media(max-width:860px){#app{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto}#right{min-height:80vh}#stage{min-height:60vh}}
+@media print{body>*:not(#pa){display:none!important}#pa{display:block}#pa .paper{transform:none!important;break-after:page;page-break-after:always;margin:0}}
+</style>
+</head>
+<body>
+<div id="app">
+ <section id="left">
+  <div class="row"><button id="clear">清空文字</button><button id="sample">載入範例</button><button id="copy">複製文字</button><button id="reset">恢復預設</button></div>
+  <textarea id="txt" placeholder="在此貼上 AI 產生的申論擬答…"></textarea>
+  <div class="row">
+   <label>每行字數 <input type="number" id="colsN" min="15" max="30"></label>
+   <input type="range" id="colsR" min="15" max="30" style="flex:1;min-width:100px">
+  </div>
+  <div class="row"><label>文字大小 <input type="range" id="fs" min="50" max="100"></label>
+   <label><input type="checkbox" id="grid">格線</label>
+   <label><input type="checkbox" id="kai">楷書</label>
+   <label><input type="checkbox" id="fw">半形轉全形</label>
+   <label><input type="checkbox" id="orph">避免孤立標題</label></div>
+  <div id="stats"></div>
+  <details><summary>實體尺寸校正（毫米）</summary>
+   <p style="margin:6px 0">未取得實際試卷尺寸前，以下為預設假設值（A4），不代表已達到實際列印 1:1。請量測實體考卷後填入。</p>
+   <div class="row">
+    <label>紙寬<input type="number" id="pw" step="0.5"></label><label>紙高<input type="number" id="ph" step="0.5"></label>
+    <label>左邊界<input type="number" id="ml" step="0.5"></label><label>右邊界<input type="number" id="mr" step="0.5"></label>
+    <label>上邊界<input type="number" id="mt" step="0.5"></label><label>評分欄寬<input type="number" id="sw" step="0.5"></label>
+    <label>題號欄寬<input type="number" id="qw" step="0.5"></label><label>行高<input type="number" id="rh" step="0.1"></label>
+   </div>
+  </details>
+ </section>
+ <section id="right">
+  <div id="bar">
+   <button id="prev">上一頁</button><span id="pg"></span><button id="next">下一頁</button>
+   <span style="opacity:.5">|</span>
+   <button id="zo">－</button><span id="zv"></span><button id="zi">＋</button><button id="zf">適合視窗</button>
+   <button id="print">列印／存 PDF</button>
+  </div>
+  <div id="stage"><div id="wrap"></div></div>
+ </section>
+</div>
+<div id="pa"></div>
+<script>
+(function(){
+"use strict";
+var $=function(i){return document.getElementById(i)};
+var ROWS=22;
+var DEF={cols:23,fs:80,grid:true,kai:true,fw:false,orph:true,pw:210,ph:297,ml:12,mr:12,mt:38,sw:18,qw:12,rh:11.5};
+var S=Object.assign({},DEF),cur=0,zoom=1,pages=[[]],st={chars:0,rows:0};
+var SAMPLE="一、請說明組織管理的意義及其重要性。\n（一）組織管理之意義\n組織管理係指管理者為達成既定目標，透過分工、協調與資源配置，使人員與制度有效運作之過程。\n（二）組織管理之重要性\n1.提升效率\n藉由明確之職權劃分，避免重複作業與資源浪費，進而提高整體績效。\n2.必備知識\n（1）定義流程\n管理者應先界定工作內容、權責與作業流程，以利後續執行與考核。\n（2）溝通協調\n建立暢通之溝通管道，使各單位資訊透明並降低衝突。\n（三）結語\n綜上所述，良好之組織管理有助於機關穩定運作並提升服務品質。";
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function mk(n){return {cells:new Array(n).fill(""),h1:false,q:""}}
+function clean(l){
+ l=l.replace(/\r/g,"").replace(/^\s*#{1,6}\s*/,"").replace(/^\s*>+\s*/,"").replace(/^\s*[-*+•・]\s+/,"").replace(/\*+|__|`/g,"");
+ l=l.replace(/\s+/g," ").trim().replace(/ ?([^\x00-\x7F]) ?/g,"$1");
+ return l;
+}
+function fwc(ch){var c=ch.charCodeAt(0);return c>32&&c<127?String.fromCharCode(c+0xFEE0):ch}
+function toHalf(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0)})}
+function layout(text,cols,fw){
+ var rows=[],chars=0,mx=cols-1,lvl=0;
+ text=text.replace(/[\u200b-\u200d\u2060\ufeff]/g,"").replace(/[\u00a0\u2028\u2029]/g," ")
+  .replace(/[\u2474-\u2487]/g,function(c){return "（"+(c.charCodeAt(0)-0x2473)+"）"})
+  .replace(/[\u3220-\u3229]/g,function(c){return "（"+"一二三四五六七八九十".charAt(c.charCodeAt(0)-0x3220)+"）"})
+  .replace(/[\u2488-\u249b]/g,function(c){return (c.charCodeAt(0)-0x2487)+"."});
+ var MK=/([。！？；：;:])[ \u3000]*(?=[（(]\s*[一二三四五六七八九十]+\s*[）)]|[（(]\s*[0-9０-９]+\s*[）)]|[0-9０-９]{1,2}\s*[.．、](?![0-9０-９]))/g;
+ var HS=/^([\s#>*\-+•・]*(?:[（(]\s*(?:[一二三四五六七八九十]+|[0-9０-９]+)\s*[）)]|[0-9０-９]{1,2}\s*[.．、](?![0-9０-９]))[^：:\n]{1,40})[：:][ \u3000]*(?=\S)/;
+ text.replace(MK,"$1\n").split("\n").map(function(s){return s.replace(HS,"$1\n")}).join("\n").split("\n").forEach(function(raw){
+  var l=clean(raw);if(!l)return;
+  var m,lead=null,first=0,cont=1,h1=false,q="";
+  if((m=l.match(/^[（(]\s*([一二三四五六七八九十]+)\s*[）)]\s*/))){lead={c:0,t:"（"+m[1]+"）"};first=1;cont=1;h1=true;l=l.slice(m[0].length)}
+  else if((m=l.match(/^[（(]\s*([0-9０-９]+)\s*[）)]\s*/))){lead={c:2,t:"（"+toHalf(m[1])+"）"};first=3;cont=3;l=l.slice(m[0].length)}
+  else if((m=l.match(/^([0-9０-９]+)\s*[.．、](?![0-9０-９])\s*/))){lead={c:1,t:toHalf(m[1])+"."};first=2;cont=2;l=l.slice(m[0].length)}
+  else if((m=l.match(/^([一二三四五六七八九十]+)[、．.]\s*/))){q=m[1];l=l.slice(m[0].length)}
+  if(lead)lvl=lead.c+1;else if(q)lvl=0;else if(lvl){first=lvl;cont=lvl}
+  first=Math.min(first,mx);cont=Math.min(cont,mx);
+  var row=mk(cols);row.h1=h1;row.q=q;
+  if(lead)row.cells[Math.min(lead.c,mx)]={t:lead.t,l:1};
+  var c=first;
+  Array.from(l).forEach(function(ch){
+   if(c>=cols){rows.push(row);row=mk(cols);c=cont}
+   row.cells[c++]=fw?fwc(ch):ch;chars++;
+  });
+  rows.push(row);
+ });
+ return {rows:rows,chars:chars};
+}
+function paginate(rows){
+ var out=[],n=0;
+ rows.forEach(function(r,i){
+  if(S.orph&&r.h1&&n%ROWS>=ROWS-2&&i<rows.length-1){while(n%ROWS){out.push(mk(S.cols));n++}}
+  out.push(r);n++;
+ });
+ pages=[];
+ for(var i=0;i<out.length;i+=ROWS)pages.push(out.slice(i,i+ROWS));
+ if(!pages.length)pages=[[]];
+ st.rows=out.length;
+}
+function pageHTML(i){
+ var rows=pages[i]||[],cols=S.cols;
+ var cw=(S.pw-S.ml-S.mr-S.sw-S.qw)/cols;
+ var fs=(Math.min(cw,S.rh)*S.fs/100).toFixed(2);
+ var ff=S.kai?'"標楷體","DFKai-SB","BiauKai","Kaiti TC","KaiTi",serif':'"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+ var g='<div class="sc"><b>評</b><b>分</b></div>';
+ for(var r=0;r<ROWS;r++){
+  var row=rows[r];
+  g+='<div class="q">'+(row&&row.q?esc(row.q):"")+'</div>';
+  for(var c=0;c<cols;c++){
+   var v=row?row.cells[c]:"";
+   g+=(v&&v.l)?'<div class="c"><span class="lab">'+esc(v.t)+'</span></div>':'<div class="c">'+esc(v)+'</div>';
+  }
+ }
+ return '<div class="paper'+(S.grid?"":" nogrid")+'" style="width:'+S.pw+'mm;height:'+S.ph+'mm;padding:'+S.mt+'mm '+S.mr+'mm 0 '+S.ml+'mm;--fs:'+fs+'mm;font-family:'+ff+'">'
+  +'<div class="hd" style="left:'+S.ml+'mm;right:'+S.mr+'mm;top:'+Math.max(4,S.mt-17)+'mm"><b>申論試卷</b><span>科目：＿＿＿＿＿＿　姓名：＿＿＿＿＿＿</span><span>第 '+(i+1)+' 頁</span></div>'
+  +'<div class="grid" style="grid-template-columns:'+S.sw+'mm '+S.qw+'mm repeat('+cols+',1fr);grid-template-rows:repeat('+ROWS+','+S.rh+'mm)">'+g+'</div>'
+  +'<div class="ft" style="bottom:3mm">共 '+pages.length+' 頁</div></div>';
+}
+function renderPaper(){
+ var pxw=S.pw*96/25.4,pxh=S.ph*96/25.4,sg=$("stage");
+ var fit=Math.min((sg.clientWidth-32)/pxw,(sg.clientHeight-32)/pxh);
+ var s=Math.max(.1,fit*zoom),w=$("wrap");
+ w.innerHTML=pageHTML(cur);
+ w.style.width=pxw*s+"px";w.style.height=pxh*s+"px";
+ w.firstChild.style.transform="scale("+s+")";
+ $("pg").textContent="第 "+(cur+1)+" 頁／共 "+pages.length+" 頁";
+ $("prev").disabled=cur<=0;$("next").disabled=cur>=pages.length-1;
+ $("zv").textContent=Math.round(zoom*100)+"%";
+}
+function update(){
+ var res=layout($("txt").value,S.cols,S.fw);
+ st.chars=res.chars;paginate(res.rows);
+ if(cur>=pages.length)cur=pages.length-1;if(cur<0)cur=0;
+ $("stats").innerHTML="總字數：<b>"+st.chars+"</b>　已用行數：<b>"+st.rows+"</b>／每頁 "+ROWS+" 行<br>總頁數：<b>"+pages.length+"</b>　預估手寫時間：約 <b>"+Math.ceil(st.chars/25)+"</b> 分鐘（以每分鐘 25 字估算）";
+ renderPaper();
+}
+function syncUI(){
+ $("colsN").value=S.cols;$("colsR").value=S.cols;$("fs").value=S.fs;
+ ["grid","kai","fw","orph"].forEach(function(k){$(k).checked=S[k]});
+ ["pw","ph","ml","mr","mt","sw","qw","rh"].forEach(function(k){$(k).value=S[k]});
+ pageSize();
+}
+function pageSize(){$("pgstyle").textContent="@page{size:"+S.pw+"mm "+S.ph+"mm;margin:0}"}
+function setCols(v){v=parseInt(v,10);if(isNaN(v))return;S.cols=Math.min(30,Math.max(15,v));$("colsN").value=S.cols;$("colsR").value=S.cols;update()}
+$("txt").addEventListener("input",update);
+$("colsN").addEventListener("input",function(){setCols(this.value)});
+$("colsR").addEventListener("input",function(){setCols(this.value)});
+$("fs").addEventListener("input",function(){S.fs=+this.value;renderPaper()});
+["grid","kai","orph"].forEach(function(k){$(k).addEventListener("change",function(){S[k]=this.checked;update()})});
+$("fw").addEventListener("change",function(){S.fw=this.checked;update()});
+["pw","ph","ml","mr","mt","sw","qw","rh"].forEach(function(k){$(k).addEventListener("input",function(){
+ var v=parseFloat(this.value);if(!(v>0))return;S[k]=v;
+ if(S.pw-S.ml-S.mr-S.sw-S.qw<50){S[k]=DEF[k];this.value=DEF[k]}
+ pageSize();renderPaper();})});
+$("clear").onclick=function(){$("txt").value="";cur=0;update()};
+$("sample").onclick=function(){$("txt").value=SAMPLE;cur=0;update()};
+$("copy").onclick=function(){
+ var t=$("txt"),b=this;
+ function ok(){b.textContent="已複製";setTimeout(function(){b.textContent="複製文字"},1200)}
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(ok,function(){t.select();document.execCommand("copy");ok()})}
+ else{t.select();document.execCommand("copy");ok()}
+};
+$("reset").onclick=function(){S=Object.assign({},DEF);zoom=1;syncUI();update()};
+$("prev").onclick=function(){if(cur>0){cur--;renderPaper()}};
+$("next").onclick=function(){if(cur<pages.length-1){cur++;renderPaper()}};
+$("zi").onclick=function(){zoom=Math.min(2,+(zoom+.1).toFixed(2));renderPaper()};
+$("zo").onclick=function(){zoom=Math.max(.4,+(zoom-.1).toFixed(2));renderPaper()};
+$("zf").onclick=function(){zoom=1;renderPaper()};
+$("print").onclick=function(){
+ var h="";for(var i=0;i<pages.length;i++)h+=pageHTML(i);
+ $("pa").innerHTML=h;window.print();
+};
+window.addEventListener("afterprint",function(){$("pa").innerHTML=""});
+window.addEventListener("resize",renderPaper);
+syncUI();update();
+})();
+</script>
+</body>
+</html>
