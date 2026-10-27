@@ -1,0 +1,375 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>國家考試申論試卷模擬編輯器</title>
+<style id="pgstyle"></style>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#222}
+#app{display:grid;grid-template-columns:38% 62%;height:100vh}
+#left{background:#fafafa;border-right:1px solid #ddd;padding:12px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+#right{background:#6b7280;display:flex;flex-direction:column;min-width:0}
+textarea{flex:1;min-height:240px;width:100%;resize:vertical;font:16px/1.6 "Noto Sans TC","Microsoft JhengHei",sans-serif;padding:10px;border:1px solid #ccc;border-radius:6px}
+button{font:inherit;padding:6px 12px;border:1px solid #bbb;background:#fff;border-radius:6px;cursor:pointer}
+button:hover:not(:disabled){background:#eef2ff}
+button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.row label{font-size:14px;display:flex;align-items:center;gap:4px}
+input[type=number]{width:64px;padding:4px}
+input.bad{outline:2px solid #dc2626}
+#stats{font-size:13px;background:#fff;border:1px solid #e3e3e3;border-radius:6px;padding:8px;line-height:1.7}
+details{font-size:13px;background:#fff;border:1px solid #e3e3e3;border-radius:6px;padding:6px 8px}
+details input{width:70px}
+.hint{font-size:12px;color:#666;margin:0}
+#bar{background:#374151;color:#fff;padding:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+#bar button{padding:5px 10px}
+#stage{flex:1;overflow:auto;padding:16px;min-height:0}
+#wrap{margin:0 auto;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.4);background:#fff}
+.paper{background:#fff;position:relative;transform-origin:0 0;--ln:#8a8a8a;color:#111;overflow:hidden}
+.paper.nogrid{--ln:transparent}
+.hd{position:absolute;font-size:3.6mm;display:flex;justify-content:space-between;align-items:flex-end}
+.hd b{font-size:5.4mm;letter-spacing:.6mm}
+.grid{display:grid;border:.5mm solid #111;width:100%}
+.sc{grid-column:1;grid-row:1/span 22;border-right:.3mm solid #111;display:flex;flex-direction:column;align-items:center;padding-top:3mm;font-size:4mm;gap:1mm}
+.q,.c{display:flex;align-items:center;justify-content:center;border-right:.2mm solid var(--ln);border-bottom:.2mm solid var(--ln);overflow:hidden;line-height:1;position:relative}
+.q{font-size:4.2mm;border-right:.3mm solid #111}
+.c{font-size:var(--fs)}
+.c.hl{background:#fff4b8}
+.c2{font-size:calc(var(--fs)*.6);letter-spacing:-.06em}
+.c3{font-size:calc(var(--fs)*.44);letter-spacing:-.08em}
+.lab{letter-spacing:-.03em;white-space:nowrap}
+.sq>span:first-child{transform:translateX(-14%)}
+.sq .t2{font-size:.6em;letter-spacing:-.06em}
+.sq .t3{font-size:.44em;letter-spacing:-.08em}
+.pu{position:absolute;right:3%;bottom:4%;font-size:calc(var(--fs)*.55)}
+.ft{position:absolute;left:0;right:0;text-align:center;font-size:3.2mm;color:#555}
+#pa{display:none}
+@media(max-width:860px){#app{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto}#right{min-height:80vh}#stage{min-height:60vh}}
+@media print{
+ body>*:not(#pa){display:none!important}
+ #pa{display:block}
+ #pa .paper{transform:none!important;break-after:page;page-break-after:always;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ #pa .paper:last-child{break-after:auto;page-break-after:auto}
+}
+</style>
+</head>
+<body>
+<div id="app">
+ <section id="left">
+  <div class="row"><button id="clear">清空文字</button><button id="sample">載入範例</button><button id="copy">複製文字</button><button id="reset">恢復預設</button></div>
+  <textarea id="txt" placeholder="在此貼上 AI 產生的申論擬答…"></textarea>
+  <div class="row">
+   <label>每行字數 <input type="number" id="colsN" min="15" max="30"></label>
+   <input type="range" id="colsR" min="15" max="30" style="flex:1;min-width:100px">
+  </div>
+  <div class="row"><label>文字大小 <input type="range" id="fs" min="50" max="100"></label>
+   <label><input type="checkbox" id="grid">格線</label>
+   <label><input type="checkbox" id="hlon">標示游標所在行</label></div>
+  <div class="row">
+   <label><input type="checkbox" id="kin">行首標點併入前格</label>
+   <label><input type="checkbox" id="orph">避免孤立標題</label>
+   <label><input type="checkbox" id="fw">半形轉全形</label>
+   <label>數字每格 <select id="dig"><option value="1">1 字</option><option value="2">2 字</option><option value="3">3 字</option></select></label>
+   <label><input type="checkbox" id="pair">英文兩字一格</label></div>
+  <div class="row">
+   <label>字體 <select id="font"></select></label>
+   <input type="text" id="fontName" placeholder="輸入電腦已安裝的字型名稱" style="display:none;flex:1;min-width:140px;padding:4px">
+   <button id="fontFile" type="button">載入字型檔…</button>
+   <input type="file" id="fontInput" accept=".ttf,.otf,.woff,.woff2" style="display:none">
+  </div>
+  <p class="hint" id="fontHint"></p>
+  <div id="stats"></div>
+  <p class="hint">文字與設定會自動保存在這台裝置的瀏覽器中。試卷區未選取輸入框時，可用 ← → 鍵翻頁。</p>
+  <details><summary>實體尺寸校正（毫米）</summary>
+   <p style="margin:6px 0">未取得實際試卷尺寸前，以下為預設假設值（A4），不代表已達到實際列印 1:1。請量測實體考卷後填入；數值不合理（格子塞不進紙張）時會自動還原。</p>
+   <div class="row">
+    <label>紙寬<input type="number" id="pw" step="0.5"></label><label>紙高<input type="number" id="ph" step="0.5"></label>
+    <label>左邊界<input type="number" id="ml" step="0.5"></label><label>右邊界<input type="number" id="mr" step="0.5"></label>
+    <label>上邊界<input type="number" id="mt" step="0.5"></label><label>評分欄寬<input type="number" id="sw" step="0.5"></label>
+    <label>題號欄寬<input type="number" id="qw" step="0.5"></label><label>行高<input type="number" id="rh" step="0.1"></label>
+   </div>
+  </details>
+ </section>
+ <section id="right">
+  <div id="bar">
+   <button id="prev">上一頁</button><span id="pg"></span><button id="next">下一頁</button>
+   <span style="opacity:.5">|</span>
+   <button id="zo">－</button><span id="zv"></span><button id="zi">＋</button><button id="zf">適合視窗</button>
+   <button id="print">列印／存 PDF</button>
+  </div>
+  <div id="stage"><div id="wrap"></div></div>
+ </section>
+</div>
+<div id="pa"></div>
+<script>
+(function(){
+"use strict";
+var $=function(i){return document.getElementById(i)};
+var ROWS=22,KEY="examPaperSim.v2";
+var DEF={cols:23,fs:80,grid:true,font:"kai",fontName:"",hlon:true,kin:true,orph:true,fw:false,pair:false,dig:3,pw:210,ph:297,ml:12,mr:12,mt:38,sw:18,qw:12,rh:11.5};
+var GEO=["pw","ph","ml","mr","mt","sw","qw","rh"],CHK=["grid","hlon","kin","orph","fw","pair"];
+var S=Object.assign({},DEF),cur=0,zoom=1,P={pages:[[]],map:[],used:0},chars=0,hl=-1,saveT=null;
+var CN="一二三四五六七八九十";
+var FONTS=[
+ {id:"kai",n:"標楷體（楷書）",f:'"標楷體","DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","AR PL UKai TW"',k:["標楷體","DFKai-SB","BiauKai","Kaiti TC","STKaiti","KaiTi","AR PL UKai TW"],g:"serif"},
+ {id:"twkai",n:"全字庫正楷體",f:'"TW-Kai","全字庫正楷體","TW-Kai-98_1"',k:["TW-Kai","全字庫正楷體","TW-Kai-98_1"],g:"serif"},
+ {id:"ming",n:"明體（細明體）",f:'"PMingLiU","新細明體","MingLiU","Songti TC","Apple LiSung","Noto Serif TC","Noto Serif CJK TC"',k:["PMingLiU","新細明體","MingLiU","Songti TC","Apple LiSung","Noto Serif TC","Noto Serif CJK TC"],g:"serif"},
+ {id:"fangsong",n:"仿宋體",f:'"FangSong","仿宋","STFangsong","FangSong_GB2312"',k:["FangSong","仿宋","STFangsong","FangSong_GB2312"],g:"serif"},
+ {id:"hei",n:"黑體（正黑體）",f:'"Microsoft JhengHei","微軟正黑體","PingFang TC","Heiti TC","Noto Sans TC","Noto Sans CJK TC"',k:["Microsoft JhengHei","微軟正黑體","PingFang TC","Heiti TC","Noto Sans TC","Noto Sans CJK TC"],g:"sans-serif"},
+ {id:"yuan",n:"圓體",f:'"Yuanti TC","圓體-繁","jf open 粉圓","jf-openhuninn-2.0","Microsoft YaHei UI"',k:["Yuanti TC","圓體-繁","jf open 粉圓","jf-openhuninn-2.0"],g:"sans-serif"},
+ {id:"xing",n:"行楷／手寫風",f:'"Xingkai TC","STXingkai","華康行楷體","DFXingKai","Hannotate TC","Klee"',k:["Xingkai TC","STXingkai","華康行楷體","DFXingKai","Hannotate TC","Klee"],g:"cursive"},
+ {id:"custom",n:"自訂（輸入字型名稱）"},
+ {id:"file",n:"從字型檔載入"}
+];
+var fileFont="";
+var LAB="[（(]\\s*[一二三四五六七八九十]+\\s*[）)]|[（(]\\s*[0-9０-９]{1,2}\\s*[）)]|[0-9０-９]{1,2}\\s*[.．、](?![0-9０-９])";
+/* 句末標點後緊接標號 → 斷行 */
+var MK=new RegExp("([。！？；：;:])[ \\u3000]*(?=[*_]*(?:"+LAB+"))","g");
+var PU=/^[，。、；：？！」』）》〉】,.;:?!)\]]$/;
+var AN=/^[A-Za-z]$/,DG=/^[0-9]$/;
+var SAMPLE="一、請說明組織管理的意義及其重要性。\n（一）組織管理之意義\n組織管理係指管理者為達成既定目標，透過分工、協調與資源配置，使人員與制度有效運作之過程。\n（二）組織管理之重要性\n1.提升效率\n藉由明確之職權劃分，避免重複作業與資源浪費，進而提高整體績效。\n2.必備知識\n（1）定義流程\n管理者應先界定工作內容、權責與作業流程，以利後續執行與考核。\n（2）溝通協調\n建立暢通之溝通管道，使各單位資訊透明並降低衝突。\n（三）結語\n綜上所述，良好之組織管理有助於機關穩定運作並提升服務品質。";
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function mk(n){return {cells:new Array(n).fill(""),h1:false,q:""}}
+function len(s){return Array.from(s).length}
+function fwc(ch){var c=ch.charCodeAt(0);return c>32&&c<127?String.fromCharCode(c+0xFEE0):ch}
+function toHalf(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0)})}
+function norm(t){
+ return t.replace(/\r\n?/g,"\n").replace(/[\u200b-\u200d\u2060\ufeff]/g,"").replace(/[\u00a0\u2028\u2029]/g," ")
+  .replace(/([^\n])[ \u3000]*(?=[\u2474-\u249b\u3220-\u3229])/g,"$1\n")
+  .replace(/[⑴-⒇]/g,function(c){return "（"+(c.charCodeAt(0)-0x2473)+"）"})
+  .replace(/[㈠-㈩]/g,function(c){return "（"+CN.charAt(c.charCodeAt(0)-0x3220)+"）"})
+  .replace(/[⒈-⒛]/g,function(c){return (c.charCodeAt(0)-0x2487)+"."})
+  .replace(MK,"$1\n");
+}
+function clean(l){
+ l=l.replace(/^\s*#{1,6}\s*/,"").replace(/^\s*>+\s*/,"").replace(/^\s*[-*+•・]\s+/,"").replace(/\*+|__|`/g,"");
+ return l.replace(/\s+/g," ").trim().replace(/ ?([^\x00-\x7F]) ?/g,"$1");
+}
+/* 排版：純計算，不碰畫面 */
+function layout(text,o){
+ var cols=o.cols,mx=cols-1,rows=[],n=0,lvl=0;
+ norm(text).split("\n").forEach(function(raw){
+  var l=clean(raw);if(!l)return;
+  var m,lead=null,first=0,cont=1,h1=false,q="";
+  if((m=l.match(/^[（(]\s*([一二三四五六七八九十]+)\s*[）)]\s*/))){lead={c:0,t:"("+m[1]+")"};h1=true;lvl=1}
+  else if((m=l.match(/^[（(]\s*([0-9０-９]{1,2})\s*[）)]\s*/))){lead={c:2,t:"("+toHalf(m[1])+")"};lvl=3}
+  else if((m=l.match(/^([0-9０-９]{1,2})\s*[.．、](?![0-9０-９])\s*/))){lead={c:1,t:toHalf(m[1])+"."};lvl=2}
+  else if((m=l.match(/^([一二三四五六七八九十壹貳參肆伍陸柒捌玖拾]+)\s*[、．.]\s*/))){q=m[1];lvl=0}
+  if(m)l=l.slice(m[0].length);
+  if(lvl){first=lvl;cont=lvl}   /* 大標→第2格、中標→第3格、小標→第4格，直到下一個標號 */
+  first=Math.min(first,mx);cont=Math.min(cont,mx);
+  var row=mk(cols);row.h1=h1;row.q=q;
+  if(lead)row.cells[Math.min(lead.c,mx)]={t:lead.t,l:1};
+  var c=first,a=Array.from(l);
+  for(var i=0;i<a.length;i++){
+   var ch=a[i],tk=ch,k=1;
+   if(!o.fw&&o.dig>1&&DG.test(ch)){var j=i;tk="";while(j<a.length&&j-i<o.dig&&DG.test(a[j]))tk+=a[j++];k=j-i;i=j-1}
+   else if(o.pair&&!o.fw&&AN.test(ch)&&i+1<a.length&&AN.test(a[i+1])){tk=ch+a[i+1];k=2;i++}
+   else if(o.fw)tk=fwc(ch);
+   n+=k;
+   if(c>=cols){
+    var last=row.cells[mx];
+    if(o.kin&&k===1&&PU.test(ch)&&last&&!last.l&&(typeof last==="string"||last.p)){
+     row.cells[mx]=typeof last==="string"?{t:last,p:tk}:{t:last.t,p:last.p+tk};continue;
+    }
+    rows.push(row);row=mk(cols);c=cont;
+   }
+   row.cells[c++]=tk;
+  }
+  rows.push(row);
+ });
+ return {rows:rows,chars:n};
+}
+function paginate(rows,cols,orph){
+ var out=[],map=[];
+ rows.forEach(function(r,i){
+  if(orph&&r.h1&&out.length%ROWS>=ROWS-2&&i<rows.length-1){while(out.length%ROWS)out.push(mk(cols))}
+  map.push(out.length);out.push(r);
+ });
+ var pages=[];for(var j=0;j<out.length;j+=ROWS)pages.push(out.slice(j,j+ROWS));
+ if(!pages.length)pages=[[]];
+ return {pages:pages,map:map,used:out.length};
+}
+function opts(){return {cols:S.cols,fw:S.fw,pair:S.pair,dig:S.dig,kin:S.kin}}
+function caretRow(){
+ var t=$("txt"),pos=t.selectionEnd;
+ if(typeof pos!=="number"||!P.map.length)return -1;
+ var k=layout(t.value.slice(0,pos),opts()).rows.length;
+ return k?P.map[Math.min(k,P.map.length)-1]:-1;
+}
+/* 繪製 */
+function cell(v,h){
+ var x=h?" hl":"";
+ if(!v)return '<div class="c'+x+'"></div>';
+ if(typeof v==="string")return '<div class="c'+(len(v)>2?" c3":len(v)>1?" c2":"")+x+'">'+esc(v)+'</div>';
+ if(v.l){
+  var w=0;Array.from(v.t).forEach(function(ch){w+=/[\x00-\x7f]/.test(ch)?.5:1});
+  return '<div class="c'+x+'"><span class="lab" style="font-size:calc(var(--fs)*'+Math.min(.72,1.5/w).toFixed(2)+')">'+esc(v.t)+'</span></div>';
+ }
+ return '<div class="c sq'+x+'"><span'+(len(v.t)>2?' class="t3"':len(v.t)>1?' class="t2"':'')+'>'+esc(v.t)+'</span><span class="pu">'+esc(v.p)+'</span></div>';
+}
+function pageHTML(i,printing){
+ var rows=P.pages[i]||[],cols=S.cols;
+ var cw=(S.pw-S.ml-S.mr-S.sw-S.qw)/cols;
+ var fs=(Math.min(cw,S.rh)*S.fs/100).toFixed(2);
+ var ff=fontStack();
+ var hr=(!printing&&S.hlon&&hl>=0&&Math.floor(hl/ROWS)===i)?hl%ROWS:-1;
+ var g='<div class="sc"><b>評</b><b>分</b></div>';
+ for(var r=0;r<ROWS;r++){
+  var row=rows[r];
+  g+='<div class="q">'+(row&&row.q?esc(row.q):"")+'</div>';
+  for(var c=0;c<cols;c++)g+=cell(row?row.cells[c]:"",r===hr);
+ }
+ return '<div class="paper'+(S.grid?"":" nogrid")+'" style="width:'+S.pw+'mm;height:'+S.ph+'mm;padding:'+S.mt+'mm '+S.mr+'mm 0 '+S.ml+'mm;--fs:'+fs+'mm;font-family:'+ff.replace(/"/g,"&quot;")+'">'
+  +'<div class="hd" style="left:'+S.ml+'mm;right:'+S.mr+'mm;top:'+Math.max(4,S.mt-17)+'mm"><b>申論試卷</b><span>科目：＿＿＿＿＿＿　姓名：＿＿＿＿＿＿</span><span>第 '+(i+1)+' 頁</span></div>'
+  +'<div class="grid" style="grid-template-columns:'+S.sw+'mm '+S.qw+'mm repeat('+cols+',1fr);grid-template-rows:repeat('+ROWS+','+S.rh+'mm)">'+g+'</div>'
+  +'<div class="ft" style="bottom:3mm">共 '+P.pages.length+' 頁</div></div>';
+}
+function renderPaper(){
+ var pxw=S.pw*96/25.4,pxh=S.ph*96/25.4,sg=$("stage");
+ var fit=Math.min((sg.clientWidth-32)/pxw,(sg.clientHeight-32)/pxh);
+ if(!(fit>0))fit=.5;
+ var s=Math.max(.1,fit*zoom),w=$("wrap");
+ w.innerHTML=pageHTML(cur,false);
+ w.style.width=pxw*s+"px";w.style.height=pxh*s+"px";
+ w.firstChild.style.transform="scale("+s+")";
+ $("pg").textContent="第 "+(cur+1)+" 頁／共 "+P.pages.length+" 頁";
+ $("prev").disabled=cur<=0;$("next").disabled=cur>=P.pages.length-1;
+ $("zv").textContent=Math.round(zoom*100)+"%";
+}
+function stats(){
+ var onPage=Math.max(0,Math.min(ROWS,P.used-cur*ROWS));
+ $("stats").innerHTML="總字數：<b>"+chars+"</b>　已用行數：<b>"+P.used+"</b>（本頁 "+onPage+"／"+ROWS+" 行）<br>總頁數：<b>"+P.pages.length+"</b>　預估手寫時間：約 <b>"+Math.ceil(chars/25)+"</b> 分鐘（以每分鐘 25 字估算）";
+}
+function clampCur(){if(cur>=P.pages.length)cur=P.pages.length-1;if(cur<0)cur=0}
+function update(follow){
+ var r=layout($("txt").value,opts());chars=r.chars;P=paginate(r.rows,S.cols,S.orph);
+ if(follow){hl=caretRow();if(hl>=0)cur=Math.floor(hl/ROWS)}else if(hl>=P.used)hl=-1;
+ clampCur();stats();renderPaper();save();
+}
+function followCaret(){
+ var o=caretRow();if(o===hl)return;hl=o;if(o>=0)cur=Math.floor(o/ROWS);clampCur();stats();renderPaper();
+}
+function goto(p){if(p<0||p>=P.pages.length||p===cur)return;cur=p;stats();renderPaper()}
+/* 設定與保存 */
+function geomOK(){return S.pw-S.ml-S.mr-S.sw-S.qw>=50&&S.mt+S.rh*ROWS+6<=S.ph}
+function save(){clearTimeout(saveT);saveT=setTimeout(function(){try{localStorage.setItem(KEY,JSON.stringify({t:$("txt").value,s:S}))}catch(e){}},300)}
+function load(){
+ try{
+  var d=JSON.parse(localStorage.getItem(KEY)||"null");if(!d)return;
+  if(typeof d.t==="string")$("txt").value=d.t;
+  if(d.s)Object.keys(DEF).forEach(function(k){if(typeof d.s[k]===typeof DEF[k])S[k]=d.s[k]});
+ }catch(e){}
+ S.cols=Math.min(30,Math.max(15,parseInt(S.cols,10)||DEF.cols));
+ if(!geomOK())GEO.forEach(function(k){S[k]=DEF[k]});
+}
+function fontStack(){
+ var fb='"標楷體","DFKai-SB","Kaiti TC",serif';
+ if(S.font==="custom")return S.fontName?'"'+S.fontName.replace(/["\\<>]/g,"")+'",'+fb:fb;
+ if(S.font==="file")return fileFont?'"'+fileFont+'",'+fb:fb;
+ for(var i=0;i<FONTS.length;i++)if(FONTS[i].id===S.font)return FONTS[i].f+","+FONTS[i].g;
+ return fb;
+}
+function hasFont(name){
+ try{
+  var cv=hasFont.c||(hasFont.c=document.createElement("canvas")),x=cv.getContext("2d");if(!x)return null;
+  var t="國考申論試卷擬答永字",r=false;
+  ["monospace","serif","sans-serif"].forEach(function(b){x.font="40px "+b;var w0=x.measureText(t).width;x.font='40px "'+name+'",'+b;if(x.measureText(t).width!==w0)r=true});
+  return r;
+ }catch(e){return null}
+}
+function buildFonts(){
+ var sel=$("font"),h="";
+ FONTS.forEach(function(f){
+  var ok=f.k?f.k.some(function(n){return hasFont(n)!==false}):true;
+  h+='<option value="'+f.id+'">'+f.n+(ok?"":"（此裝置未安裝）")+'</option>';
+ });
+ sel.innerHTML=h;
+}
+function fontUI(){
+ $("font").value=S.font;
+ $("fontName").style.display=S.font==="custom"?"":"none";
+ $("fontName").value=S.fontName;
+ var hint="";
+ if(S.font==="file")hint=fileFont?"已載入字型檔："+fileFont+"（只在這次開啟有效，重新整理後需再載入）":"請按「載入字型檔…」選擇 .ttf / .otf 字型檔。";
+ else if(S.font==="custom")hint="輸入名稱需與電腦上安裝的字型完全相同，例如：標楷體、華康楷書體W5。";
+ else{var f=FONTS.filter(function(x){return x.id===S.font})[0];if(f&&f.k&&!f.k.some(function(n){return hasFont(n)!==false}))hint="這台裝置沒有此字體，畫面會改用其他字體顯示。可改用「從字型檔載入」。"}
+ $("fontHint").textContent=hint;$("fontHint").style.display=hint?"":"none";
+}
+function syncUI(){
+ $("colsN").value=S.cols;$("colsR").value=S.cols;$("fs").value=S.fs;
+ CHK.forEach(function(k){$(k).checked=S[k]});
+ $("pair").disabled=S.fw;$("dig").disabled=S.fw;$("dig").value=S.dig;fontUI();
+ GEO.forEach(function(k){$(k).value=S[k];$(k).classList.remove("bad")});
+ pageSize();
+}
+function pageSize(){$("pgstyle").textContent="@page{size:"+S.pw+"mm "+S.ph+"mm;margin:0}"}
+function setCols(v){v=parseInt(v,10);if(isNaN(v))return;S.cols=Math.min(30,Math.max(15,v));$("colsN").value=S.cols;$("colsR").value=S.cols;update(false)}
+function fillPrint(){var h="";for(var i=0;i<P.pages.length;i++)h+=pageHTML(i,true);$("pa").innerHTML=h}
+/* 事件 */
+var T=$("txt");
+T.addEventListener("input",function(){update(true)});
+T.addEventListener("click",followCaret);
+T.addEventListener("keyup",function(e){if(/^(Arrow|Home|End|Page)/.test(e.key))followCaret()});
+$("colsN").addEventListener("input",function(){setCols(this.value)});
+$("colsN").addEventListener("change",function(){this.value=S.cols});
+$("colsR").addEventListener("input",function(){setCols(this.value)});
+$("fs").addEventListener("input",function(){S.fs=+this.value;renderPaper();save()});
+CHK.forEach(function(k){$(k).addEventListener("change",function(){S[k]=this.checked;$("pair").disabled=S.fw;$("dig").disabled=S.fw;update(false)})});
+$("dig").addEventListener("change",function(){S.dig=+this.value;update(false)});
+GEO.forEach(function(k){$(k).addEventListener("input",function(){
+ var v=parseFloat(this.value);if(!(v>0)){this.classList.add("bad");return}
+ var old=S[k];S[k]=v;
+ if(!geomOK()){S[k]=old;this.classList.add("bad");return}
+ this.classList.remove("bad");pageSize();renderPaper();save();
+});$(k).addEventListener("change",function(){this.value=S[k];this.classList.remove("bad")})});
+$("font").addEventListener("change",function(){S.font=this.value;fontUI();renderPaper();save();if(S.font==="file"&&!fileFont)$("fontInput").click()});
+$("fontName").addEventListener("input",function(){S.fontName=this.value.trim();renderPaper();save()});
+$("fontFile").onclick=function(){$("fontInput").click()};
+$("fontInput").addEventListener("change",function(){
+ var f=this.files&&this.files[0];if(!f)return;
+ var nm="UserFont"+Date.now(),rd=new FileReader();
+ rd.onload=function(){
+  try{
+   var ff=new FontFace(nm,rd.result);
+   ff.load().then(function(){document.fonts.add(ff);fileFont=nm;S.font="file";fontUI();$("fontHint").textContent="已載入字型檔："+f.name+"（只在這次開啟有效，重新整理後需再載入）";renderPaper();save()},
+    function(){$("fontHint").textContent="無法讀取這個字型檔，請換一個 .ttf 或 .otf 檔。";$("fontHint").style.display=""});
+  }catch(e){$("fontHint").textContent="這個瀏覽器不支援載入字型檔。";$("fontHint").style.display=""}
+ };
+ rd.readAsArrayBuffer(f);this.value="";
+});
+$("clear").onclick=function(){T.value="";cur=0;hl=-1;update(false);T.focus()};
+$("sample").onclick=function(){T.value=SAMPLE;cur=0;hl=-1;update(false)};
+$("copy").onclick=function(){
+ var b=this;
+ function ok(){b.textContent="已複製";setTimeout(function(){b.textContent="複製文字"},1200)}
+ function fb(){T.select();try{document.execCommand("copy")}catch(e){}ok()}
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(T.value).then(ok,fb);else fb();
+};
+$("reset").onclick=function(){S=Object.assign({},DEF);zoom=1;syncUI();update(false)};
+$("prev").onclick=function(){goto(cur-1)};
+$("next").onclick=function(){goto(cur+1)};
+$("zi").onclick=function(){zoom=Math.min(2,+(zoom+.1).toFixed(2));renderPaper()};
+$("zo").onclick=function(){zoom=Math.max(.4,+(zoom-.1).toFixed(2));renderPaper()};
+$("zf").onclick=function(){zoom=1;renderPaper()};
+$("print").onclick=function(){fillPrint();window.print()};
+window.addEventListener("beforeprint",fillPrint);
+window.addEventListener("afterprint",function(){$("pa").innerHTML=""});
+window.addEventListener("resize",renderPaper);
+document.addEventListener("keydown",function(e){
+ var tg=e.target&&e.target.tagName;if(tg==="TEXTAREA"||tg==="INPUT"||tg==="SELECT")return;
+ if(e.key==="ArrowLeft"||e.key==="PageUp"){goto(cur-1);e.preventDefault()}
+ else if(e.key==="ArrowRight"||e.key==="PageDown"){goto(cur+1);e.preventDefault()}
+});
+window.__exam={layout:layout,paginate:paginate,state:function(){return {S:S,cur:cur,P:P,hl:hl}}};
+buildFonts();load();if(!FONTS.some(function(f){return f.id===S.font}))S.font="kai";syncUI();update(false);
+})();
+</script>
+</body>
+</html>
+
+</body></html>
